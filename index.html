@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Accessibility: Allow pinch-to-zoom for elderly & low-vision patients -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>सेहत साथी | Sehat Saathi — Medicine Strip Reader</title>
+  <meta name="description" content="Accessible medicine strip reader and voice dose reminders for elderly and low-literacy patients.">
+
+  <!-- PWA Manifest & Colors -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1b6355">
+  <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg">
+
+  <!-- Google Fonts: Humanist Sans + Devanagari + Gurmukhi -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@500;600;700;800&family=Noto+Sans+Gurmukhi:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-body">
+
+  <!-- Accessible Language Radio Controls -->
+  <input type="radio" name="app-lang" id="lang-en" class="visually-hidden-radio" checked>
+  <input type="radio" name="app-lang" id="lang-hi" class="visually-hidden-radio">
+  <input type="radio" name="app-lang" id="lang-pa" class="visually-hidden-radio">
+
+  <!-- Hidden File Input for Gallery Upload -->
+  <input type="file" id="gallery-input" accept="image/*" class="visually-hidden" aria-label="Upload medicine picture from gallery">
+
+  <!-- Hidden Canvas for Video Frame Capture -->
+  <canvas id="capture-canvas" class="visually-hidden"></canvas>
+
+  <!-- Screen Reader Live Announcements -->
+  <div id="a11y-announcer" class="visually-hidden" aria-live="assertive"></div>
+
+  <!-- Main App Shell Frame -->
+  <div class="app-shell" id="app-shell">
+
+    <!-- Judge / Demo Scenario Switcher (Top Testing Bar) -->
+    <aside class="demo-bar" aria-label="Hackathon Demo Controls">
+      <div class="demo-bar__inner">
+        <label for="scenario-select" class="demo-bar__label">
+          <span class="lang-en">Demo Scenario:</span>
+          <span class="lang-hi lang-hindi">जांच परिदृश्य:</span>
+          <span class="lang-pa lang-punjabi">ਜਾਂਚ ਸਥਿਤੀ:</span>
+        </label>
+        <select id="scenario-select" class="demo-bar__select" aria-label="Select scan scenario to simulate">
+          <option value="confident_paracetamol">1. Confident (Paracetamol 500mg)</option>
+          <option value="confident_metformin">2. Confident (Metformin 500mg)</option>
+          <option value="confident_amlodipine">3. Confident (Amlodipine 5mg)</option>
+          <option value="confident_pantoprazole">4. Confident (Pantoprazole 40mg)</option>
+          <option value="confident_azithromycin">5. Confident (Azithromycin 500mg)</option>
+          <option value="unsure_curved_shiny">6. Unsure (Shiny / Curved Strip)</option>
+          <option value="failed_blurry_torn">7. Failed (Blurry / Torn Strip)</option>
+        </select>
+
+        <button type="button" id="toggle-camera-source-btn" class="demo-source-btn" title="Toggle between real camera and demo strip">
+          <span id="camera-source-label">Switch to Demo Strip</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Top App Header -->
+    <header class="app-header" role="banner">
+      <div class="app-header__brand">
+        <div class="app-logo" aria-hidden="true">
+          <!-- Accessible Medical Emblem -->
+          <svg width="26" height="26" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="44" height="44" rx="12" fill="var(--color-primary-light)" />
+            <path d="M22 10V34M10 22H34" stroke="var(--color-primary)" stroke-width="4.5" stroke-linecap="round" />
+            <circle cx="22" cy="22" r="3.5" fill="var(--color-primary)" />
+          </svg>
+        </div>
+        <div class="app-titles">
+          <!-- Fixed Brand Name: सेहत साथी -->
+          <h1 class="app-name">सेहत साथी</h1>
+          <span class="app-sub">
+            <span class="lang-en">Sehat Saathi • Medicine Strip Reader</span>
+            <span class="lang-hi lang-hindi">Sehat Saathi • दवा पत्ता स्कैनर</span>
+            <span class="lang-pa lang-punjabi">Sehat Saathi • ਦਵਾਈ ਪੱਤਾ ਸਕੈਨਰ</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Accessible Language Selector Pills -->
+      <fieldset class="app-lang-bar" aria-label="Select App Language">
+        <legend class="visually-hidden">Language Selection</legend>
+        <label for="lang-en" class="lang-btn lang-btn-en" tabindex="0" title="English">English</label>
+        <label for="lang-hi" class="lang-btn lang-btn-hi lang-hindi" tabindex="0" title="हिन्दी">हिन्दी</label>
+        <label for="lang-pa" class="lang-btn lang-btn-pa lang-punjabi" tabindex="0" title="ਪੰਜਾਬੀ">ਪੰਜਾਬੀ</label>
+      </fieldset>
+    </header>
+
+    <!-- MAIN VIEW 1: SCANNER TAB -->
+    <main class="app-content tab-view is-active" id="view-scanner">
+
+      <!-- Viewport Voice Guidance Banner -->
+      <div class="voice-status-banner" id="voice-banner" role="status" aria-live="polite">
+        <div class="voice-status-indicator" aria-hidden="true">
+          <span class="sound-wave"></span>
+          <span class="sound-wave"></span>
+          <span class="sound-wave"></span>
+          <span class="sound-wave"></span>
+        </div>
+        <p class="voice-status-text">
+          <span class="lang-en"><strong>Voice Guidance Active:</strong> Results will be spoken clearly.</span>
+          <span class="lang-hi lang-hindi"><strong>आवाज़ मार्गदर्शन चालू:</strong> जानकारी साफ आवाज़ में सुनाई जाएगी।</span>
+          <span class="lang-pa lang-punjabi"><strong>ਆਵਾਜ਼ ਮਾਰਗਦਰਸ਼ਨ ਚਾਲੂ:</strong> ਜਾਣਕਾਰੀ ਸਾਫ਼ ਆਵਾਜ਼ ਵਿੱਚ ਸੁਣਾਈ ਜਾਵੇਗੀ।</span>
+        </p>
+      </div>
+
+      <!-- Missing Voice Fallback Notice (Shown only if hi/pa voice pack is absent) -->
+      <div class="voice-fallback-alert" id="voice-fallback-alert" style="display: none;" role="alert">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <p id="voice-fallback-text">
+          <span class="lang-en">Native speech pack not detected on phone. Using English audio fallback.</span>
+          <span class="lang-hi lang-hindi">फोन में हिन्दी आवाज़ पैक नहीं मिला। अंग्रेजी में बोलकर बताया जाएगा।</span>
+          <span class="lang-pa lang-punjabi">ਫੋਨ ਵਿੱਚ ਪੰਜਾਬੀ ਆਵਾਜ਼ ਪੈਕ ਨਹੀਂ ਮਿਲਿਆ। ਅੰਗਰੇਜ਼ੀ ਵਿੱਚ ਸੁਣਾਇਆ ਜਾਵੇਗਾ।</span>
+        </p>
+      </div>
+
+      <!-- Interactive Viewfinder Section -->
+      <section class="scanner-viewport" aria-label="Camera scanner view">
+        <div class="camera-feed-canvas" id="camera-canvas">
+
+          <!-- Real WebRTC Camera Video Element -->
+          <video id="camera-video" class="camera-video-stream" playsinline autoplay muted></video>
+
+          <!-- Camera Shutter Flash Effect -->
+          <div id="shutter-flash" class="shutter-flash" aria-hidden="true"></div>
+
+          <!-- Torch Light Glow Beam Overlay -->
+          <div class="torch-illumination-beam" id="torch-beam" aria-hidden="true"></div>
+
+          <!-- Camera Status Indicator -->
+          <div class="camera-status-tag" id="camera-status-tag">
+            <span class="status-dot" id="camera-status-dot"></span>
+            <span id="camera-status-text">
+              <span class="lang-en">Camera Active • Hold Steady</span>
+              <span class="lang-hi lang-hindi">कैमरा चालू है • हाथ स्थिर रखें</span>
+              <span class="lang-pa lang-punjabi">ਕੈਮਰਾ ਚਾਲੂ ਹੈ • ਹੱਥ ਸਥਿਰ ਰੱਖੋ</span>
+            </span>
+          </div>
+
+          <!-- Real-Time Camera Error / Permission Denied Message -->
+          <div class="camera-error-overlay" id="camera-error-overlay" style="display: none;">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e05244" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <p id="camera-error-msg">
+              <span class="lang-en">Camera access blocked. Please enable camera permission or upload a photo from gallery.</span>
+              <span class="lang-hi lang-hindi">कैमरा अनुमति नहीं मिली। कृपया सेटिंग्स में अनुमति दें या गैलरी से फोटो चुनें।</span>
+              <span class="lang-pa lang-punjabi">ਕੈਮਰੇ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਗੈਲਰੀ ਵਿੱਚੋਂ ਫੋਟੋ ਚੁਣੋ।</span>
+            </p>
+          </div>
+
+          <!-- Gallery Image Upload Preview (Shown when user uploads a photo) -->
+          <img id="upload-preview-img" class="upload-preview-img" alt="Uploaded Medicine Photo" style="display: none;">
+
+          <!-- Demo Blister Strip SVG (Active when camera is off or in Demo mode) -->
+          <div class="blister-svg-container" id="blister-strip-svg" aria-hidden="true">
+            <svg class="medicine-strip-svg" viewBox="0 0 340 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="foilGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#4a5f56" />
+                  <stop offset="30%" stop-color="#31433b" />
+                  <stop offset="70%" stop-color="#556c62" />
+                  <stop offset="100%" stop-color="#283831" />
+                </linearGradient>
+                <linearGradient id="pocketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+                  <stop offset="50%" stop-color="#a4b8af" />
+                  <stop offset="100%" stop-color="#3b4d45" />
+                </linearGradient>
+                <linearGradient id="pillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffffff" />
+                  <stop offset="100%" stop-color="#e2e8e5" />
+                </linearGradient>
+              </defs>
+
+              <rect x="25" y="15" width="290" height="190" rx="16" fill="url(#foilGrad)" stroke="#6a8277" stroke-width="2" />
+              <path d="M25 45H315M25 75H315M25 105H315M25 135H315M25 165H315" stroke="#ffffff" stroke-opacity="0.08" stroke-dasharray="2 3" />
+              <text x="45" y="42" fill="#d0dfd8" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="800" letter-spacing="1.5">PARACETAMOL 500mg IP</text>
+              <text x="235" y="42" fill="#9db5ab" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="600">EXP 12/28</text>
+
+              <!-- Tablet Pockets -->
+              <g>
+                <rect x="50" y="60" width="65" height="50" rx="12" fill="url(#pocketGrad)" stroke="#819c90" stroke-width="1.5" />
+                <ellipse cx="82.5" cy="85" rx="22" ry="16" fill="url(#pillGrad)" />
+              </g>
+              <g>
+                <rect x="137.5" y="60" width="65" height="50" rx="12" fill="url(#pocketGrad)" stroke="#819c90" stroke-width="1.5" />
+                <ellipse cx="170" cy="85" rx="22" ry="16" fill="url(#pillGrad)" />
+              </g>
+              <g>
+                <rect x="225" y="60" width="65" height="50" rx="12" fill="url(#pocketGrad)" stroke="#819c90" stroke-width="1.5" />
+                <ellipse cx="257.5" cy="85" rx="22" ry="16" fill="url(#pillGrad)" />
+              </g>
+              <g>
+                <rect x="50" y="130" width="65" height="50" rx="12" fill="url(#pocketGrad)" stroke="#819c90" stroke-width="1.5" />
+                <ellipse cx="82.5" cy="155" rx="22" ry="16" fill="url(#pillGrad)" />
+              </g>
+              <g>
+                <rect x="137.5" y="130" width="65" height="50" rx="12" fill="url(#pocketGrad)" stroke="#819c90" stroke-width="1.5" />
+                <ellipse cx="170" cy="155" rx="22" ry="16" fill="url(#pillGrad)" />
+              </g>
+              <g>
+                <rect x="225" y="130" width="65" height="50" rx="12" fill="url(#pocketGrad)" stroke="#819c90" stroke-width="1.5" />
+                <ellipse cx="257.5" cy="155" rx="22" ry="16" fill="url(#pillGrad)" />
+              </g>
+            </svg>
+          </div>
+
+          <!-- Alignment Frame Reticle -->
+          <div class="scan-target-box" aria-hidden="true">
+            <div class="bracket bracket-tl"></div>
+            <div class="bracket bracket-tr"></div>
+            <div class="bracket bracket-bl"></div>
+            <div class="bracket bracket-br"></div>
+            
+            <!-- Sweeping Laser Beam -->
+            <div class="scan-laser-beam" id="laser-beam"></div>
+
+            <div class="scan-target-prompt">
+              <span class="target-title">
+                <span class="lang-en">Align medicine strip inside frame</span>
+                <span class="lang-hi lang-hindi">दवा का पत्ता इस चौकोर बक्से में रखें</span>
+                <span class="lang-pa lang-punjabi">ਦਵਾਈ ਦਾ ਪੱਤਾ ਇਸ ਚੌਖਟੇ ਵਿੱਚ ਰੱਖੋ</span>
+              </span>
+              <span class="target-sub">
+                <span class="lang-en">Hold steady with good lighting</span>
+                <span class="lang-hi lang-hindi">हाथ स्थिर रखें और रोशनी अच्छी रखें</span>
+                <span class="lang-pa lang-punjabi">ਹੱਥ ਸਥਿਰ ਰੱਖੋ ਅਤੇ ਚੰਗੀ ਰੋਸ਼ਨੀ ਰੱਖੋ</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Viewport Camera Tools (Torch & Voice) -->
+          <div class="viewport-tools">
+            <button class="tool-btn" id="torch-btn" type="button" aria-label="Toggle Torch Light">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>
+                <span class="lang-en">Torch</span>
+                <span class="lang-hi lang-hindi">टॉर्च</span>
+                <span class="lang-pa lang-punjabi">ਟਾਰਚ</span>
+                <strong id="torch-status-text" class="tool-status-text">OFF</strong>
+              </span>
+            </button>
+
+            <button class="tool-btn tool-btn--active" id="voice-toggle-btn" type="button" aria-label="Toggle Voice Guidance">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <span>
+                <span class="lang-en">Voice Guidance</span>
+                <span class="lang-hi lang-hindi">आवाज़ मार्गदर्शन</span>
+                <span class="lang-pa lang-punjabi">ਆਵਾਜ਼ ਮਾਰਗਦਰਸ਼ਨ</span>
+              </span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Primary Action Buttons (56px+ Touch Targets) -->
+      <section class="scanner-actions" aria-label="Scanning options">
+        <button class="app-btn app-btn--scan" id="scan-btn" type="button">
+          <span class="app-btn__icon" aria-hidden="true">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </span>
+          <span class="app-btn__labels">
+            <strong class="app-btn__main-text">
+              <span class="lang-en">SCAN MEDICINE NOW</span>
+              <span class="lang-hi lang-hindi">दवा अभी स्कैन करें</span>
+              <span class="lang-pa lang-punjabi">ਦਵਾਈ ਹੁਣੇ ਸਕੈਨ ਕਰੋ</span>
+            </strong>
+            <span class="app-btn__sub-text">
+              <span class="lang-en">Tap to photograph medicine strip</span>
+              <span class="lang-hi lang-hindi">पत्ते की फोटो खींचने के लिए दबाएं</span>
+              <span class="lang-pa lang-punjabi">ਪੱਤੇ ਦੀ ਫੋਟੋ ਖਿੱਚਣ ਲਈ ਦਬਾਓ</span>
+            </span>
+          </span>
+        </button>
+
+        <button class="app-btn app-btn--upload" id="upload-btn" type="button">
+          <span class="app-btn__icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </span>
+          <span class="app-btn__labels">
+            <strong class="app-btn__main-text">
+              <span class="lang-en">Upload from Photo Gallery</span>
+              <span class="lang-hi lang-hindi">गैलरी से फोटो चुनें</span>
+              <span class="lang-pa lang-punjabi">ਗੈਲਰੀ ਵਿੱਚੋਂ ਫੋਟੋ ਚੁਣੋ</span>
+            </strong>
+            <span class="app-btn__sub-text">
+              <span class="lang-en">Select a photo already on phone</span>
+              <span class="lang-hi lang-hindi">फोन में पहले से मौजूद फोटो लें</span>
+              <span class="lang-pa lang-punjabi">ਫੋਨ ਵਿੱਚ ਪਹਿਲਾਂ ਤੋਂ ਮੌਜੂਦ ਫੋਟੋ ਲਓ</span>
+            </span>
+          </span>
+        </button>
+      </section>
+
+      <!-- RESULTS ZONE: DYNAMIC CONFIDENCE SCREENS -->
+      <section class="results-container" id="results-container">
+
+        <!-- SCREEN A: CONFIDENT RESULT (>= 0.85) -->
+        <article class="result-card result-card--confident" id="card-confident" style="display: none;">
+          <div class="result-header">
+            <div class="confidence-badge confidence-badge--high" aria-label="High certainty result">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span class="badge-text">
+                <span class="lang-en">High Certainty (96% Match)</span>
+                <span class="lang-hi lang-hindi">विश्वसनीय पहचान (96% सटीक)</span>
+                <span class="lang-pa lang-punjabi">ਭਰੋਸੇਯੋਗ ਪਛਾਣ (96% ਸਹੀ)</span>
+              </span>
+            </div>
+            <span class="verified-tag">✓ Verified Match</span>
+          </div>
+
+          <div class="med-identity-block">
+            <div class="med-name-group">
+              <h2 class="med-name" id="confident-med-name">Paracetamol</h2>
+              <span class="med-strength" id="confident-med-strength">500mg</span>
+            </div>
+            <p class="med-purpose-text" id="confident-med-purpose">
+              Fever and mild to moderate pain relief
+            </p>
+          </div>
+
+          <!-- Schedule Zone with Icon-First Semantics -->
+          <div class="schedule-block">
+            <h3 class="schedule-title">
+              <span class="lang-en">When to take your medicine:</span>
+              <span class="lang-hi lang-hindi">दवा लेने का सही समय:</span>
+              <span class="lang-pa lang-punjabi">ਦਵਾਈ ਲੈਣ ਦਾ ਸਹੀ ਸਮਾਂ:</span>
+            </h3>
+
+            <div class="schedule-cards-grid" id="confident-schedule-grid">
+              <!-- Dynamically populated with icon-first timing pills -->
+            </div>
+          </div>
+
+          <!-- Spoken Audio Controls & Speech Rate Options -->
+          <div class="audio-control-card">
+            <button class="audio-play-large-btn" id="listen-btn" type="button">
+              <span class="audio-play-icon" aria-hidden="true">
+                <svg class="play-svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <svg class="pause-svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                  <rect x="6" y="4" width="4" height="16"></rect>
+                  <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+              </span>
+              <span class="audio-btn-labels">
+                <strong>
+                  <span class="lang-en">Listen to Instructions</span>
+                  <span class="lang-hi lang-hindi">पूरी जानकारी आवाज़ में सुनें</span>
+                  <span class="lang-pa lang-punjabi">ਪੂਰੀ ਜਾਣਕਾਰੀ ਆਵਾਜ਼ ਵਿੱਚ ਸੁਣੋ</span>
+                </strong>
+                <small id="listen-subtext">
+                  <span class="lang-en">Speaks medicine name &amp; dose time</span>
+                  <span class="lang-hi lang-hindi">दवा का नाम और लेने का समय बोलेगा</span>
+                  <span class="lang-pa lang-punjabi">ਦਵਾਈ ਦਾ ਨਾਮ ਅਤੇ ਲੈਣ ਦਾ ਸਮਾਂ ਬੋਲੇਗਾ</span>
+                </small>
+              </span>
+            </button>
+
+            <!-- Speed & Repeat Bar -->
+            <div class="audio-secondary-bar">
+              <div class="speed-toggle-group">
+                <span class="speed-label">
+                  <span class="lang-en">Speed:</span>
+                  <span class="lang-hi lang-hindi">गति:</span>
+                  <span class="lang-pa lang-punjabi">ਰਫ਼ਤਾਰ:</span>
+                </span>
+                <button type="button" class="speed-btn is-active" id="speed-normal-btn">Normal (1x)</button>
+                <button type="button" class="speed-btn" id="speed-slow-btn">Slow (0.8x)</button>
+              </div>
+
+              <button type="button" class="repeat-btn" id="repeat-speech-btn" title="Repeat Audio">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                <span class="lang-en">Repeat</span>
+                <span class="lang-hi lang-hindi">दोबारा</span>
+                <span class="lang-pa lang-punjabi">ਦੁਬਾਰਾ</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SAFETY RULE 3b: Explicit Confirmation Dialog Before Saving -->
+          <div class="confirmation-box" role="dialog" aria-labelledby="confirm-prompt-title">
+            <h4 id="confirm-prompt-title" class="confirmation-title">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span class="lang-en">Is this the medicine prescribed to you?</span>
+              <span class="lang-hi lang-hindi">क्या यही दवा आपके डॉक्टर ने लिखी है?</span>
+              <span class="lang-pa lang-punjabi">ਕੀ ਇਹ ਉਹੀ ਦਵਾਈ ਹੈ ਜੋ ਤੁਹਾਡੇ ਡਾਕਟਰ ਨੇ ਲਿਖੀ ਹੈ?</span>
+            </h4>
+
+            <div class="confirmation-buttons">
+              <button class="confirm-btn confirm-btn--yes" id="btn-confirm-yes" type="button">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span class="lang-en">Yes, Save &amp; Set Reminders</span>
+                <span class="lang-hi lang-hindi">हाँ, सहेजें और याद दिलाएं</span>
+                <span class="lang-pa lang-punjabi">ਹਾਂ, ਸਾਂਭੋ ਅਤੇ ਚੇਤੇ ਕਰਵਾਓ</span>
+              </button>
+
+              <button class="confirm-btn confirm-btn--no" id="btn-confirm-no" type="button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                <span class="lang-en">No, Scan Again</span>
+                <span class="lang-hi lang-hindi">नहीं, दोबारा जांचें</span>
+                <span class="lang-pa lang-punjabi">ਨਹੀਂ, ਦੁਬਾਰਾ ਜਾਂਚ ਕਰੋ</span>
+              </button>
+            </div>
+          </div>
+
+          <p class="doctor-disclaimer-note">
+            ⚠️ <span class="lang-en">Always follow the prescription written by your doctor.</span>
+            <span class="lang-hi lang-hindi">हमेशा अपने डॉक्टर के पर्चे के अनुसार ही दवा लें।</span>
+            <span class="lang-pa lang-punjabi">ਹਮੇਸ਼ਾ ਆਪਣੇ ਡਾਕਟਰ ਦੀ ਪਰਚੀ ਅਨੁਸਾਰ ਹੀ ਦਵਾਈ ਲਓ।</span>
+          </p>
+        </article>
+
+        <!-- SCREEN B: UNSURE RESULT (0.50 - 0.85) -->
+        <article class="result-card result-card--unsure" id="card-unsure" style="display: none;">
+          <div class="result-header">
+            <div class="confidence-badge confidence-badge--medium" aria-label="Uncertain result">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span class="badge-text">
+                <span class="lang-en">Not Sure — Needs Verification</span>
+                <span class="lang-hi lang-hindi">पूरी तरह पक्का नहीं है (संदेह)</span>
+                <span class="lang-pa lang-punjabi">ਪੂਰਾ ਭਰੋਸਾ ਨਹੀਂ ਹੈ (ਸ਼ੱਕੀ)</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Plain words safety warning -->
+          <div class="unsure-alert-callout">
+            <p class="unsure-alert-text">
+              <span class="lang-en">The strip is curved, shiny, or text is unclear. We cannot safely guarantee this medicine. <strong>Please ask your pharmacist or doctor.</strong></span>
+              <span class="lang-hi lang-hindi">दवा का पत्ता मुड़ा हुआ या चमकदार है, जिससे अक्षर साफ नहीं दिखे। <strong>कृपया अपने डॉक्टर या दवा विक्रेता (फार्मासिस्ट) से पूछें।</strong></span>
+              <span class="lang-pa lang-punjabi">ਦਵਾਈ ਦਾ ਪੱਤਾ ਮੁੜਿਆ ਜਾਂ ਚਮਕਦਾਰ ਹੈ, ਜਿਸ ਕਾਰਨ ਅੱਖਰ ਸਾਫ਼ ਨਹੀਂ ਦਿਖੇ। <strong>ਕਿਰਪਾ ਕਰਕੇ ਡਾਕਟਰ ਜਾਂ ਫਾਰਮਾਸਿਸਟ ਨੂੰ ਪੁੱਛੋ।</strong></span>
+            </p>
+          </div>
+
+          <!-- Top Candidates Choice Area -->
+          <div class="candidates-section">
+            <h3 class="candidates-title">
+              <span class="lang-en">Did you mean one of these medicines?</span>
+              <span class="lang-hi lang-hindi">क्या इनमें से आपकी दवा है?</span>
+              <span class="lang-pa lang-punjabi">ਕੀ ਇਹਨਾਂ ਵਿੱਚੋਂ ਕੋਈ ਦਵਾਈ ਤੁਹਾਡੀ ਹੈ?</span>
+            </h3>
+
+            <div class="candidates-list" id="candidates-list">
+              <!-- Dynamically populated with large candidate pills -->
+            </div>
+          </div>
+
+          <button class="app-btn app-btn--secondary-wide retake-btn" id="btn-unsure-retake" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <span class="lang-en">Take a Flatter, Glare-Free Photo</span>
+            <span class="lang-hi lang-hindi">दोबारा साफ फोटो खींचें</span>
+            <span class="lang-pa lang-punjabi">ਦੁਬਾਰਾ ਸਾਫ਼ ਫੋਟੋ ਖਿੱਚੋ</span>
+          </button>
+        </article>
+
+        <!-- SCREEN C: FAILED RESULT (< 0.50) -->
+        <article class="result-card result-card--failed" id="card-failed" style="display: none;">
+          <div class="result-header">
+            <div class="confidence-badge confidence-badge--low" aria-label="Scan failed">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              <span class="badge-text">
+                <span class="lang-en">Could Not Read Strip</span>
+                <span class="lang-hi lang-hindi">दवा पहचानी नहीं जा सकी</span>
+                <span class="lang-pa lang-punjabi">ਦਵਾਈ ਪਛਾਣੀ ਨਹੀਂ ਜਾ ਸਕੀ</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="failed-tips-box">
+            <h3 class="failed-tips-heading">
+              <span class="lang-en">How to get a successful scan:</span>
+              <span class="lang-hi lang-hindi">साफ फोटो लेने के जरूरी सुझाव:</span>
+              <span class="lang-pa lang-punjabi">ਸਾਫ਼ ਫੋਟੋ ਲਈ ਜ਼ਰੂਰੀ ਸੁਝਾਅ:</span>
+            </h3>
+
+            <ul class="failed-tips-list">
+              <li>
+                <span class="tip-icon">🖐️</span>
+                <span class="tip-text">
+                  <span class="lang-en">Flatten curved or twisted strips with your fingers</span>
+                  <span class="lang-hi lang-hindi">पत्ता मुड़ा हो तो उंगलियों से सीधा करें</span>
+                  <span class="lang-pa lang-punjabi">ਪੱਤਾ ਮੁੜਿਆ ਹੋਵੇ ਤਾਂ ਉਂਗਲਾਂ ਨਾਲ ਸਿੱਧਾ ਕਰੋ</span>
+                </span>
+              </li>
+              <li>
+                <span class="tip-icon">✨</span>
+                <span class="tip-text">
+                  <span class="lang-en">Tilt strip slightly to avoid direct light glare on shiny foil</span>
+                  <span class="lang-hi lang-hindi">पन्नी पर सीधी रोशनी की चमक से बचें</span>
+                  <span class="lang-pa lang-punjabi">ਪੱਤੇ 'ਤੇ ਸਿੱਧੀ ਚਮਕ ਤੋਂ ਬਚੋ</span>
+                </span>
+              </li>
+              <li>
+                <span class="tip-icon">🔦</span>
+                <span class="tip-text">
+                  <span class="lang-en">Turn on the torch button if room is dim</span>
+                  <span class="lang-hi lang-hindi">कम रोशनी में ऊपर दिया टॉर्च बटन चालू करें</span>
+                  <span class="lang-pa lang-punjabi">ਘੱਟ ਰੋਸ਼ਨੀ ਵਿੱਚ ਟਾਰਚ ਚਾਲੂ ਕਰੋ</span>
+                </span>
+              </li>
+              <li>
+                <span class="tip-icon">✂️</span>
+                <span class="tip-text">
+                  <span class="lang-en">Ensure medicine name and strength are not torn away</span>
+                  <span class="lang-hi lang-hindi">ध्यान दें कि दवा का नाम और मिलीग्राम फटा न हो</span>
+                  <span class="lang-pa lang-punjabi">ਧਿਆਨ ਰੱਖੋ ਕਿ ਨਾਮ ਅਤੇ ਤਾਕਤ ਪਾਟੀ ਨਾ ਹੋਵੇ</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <button class="app-btn app-btn--primary retake-btn" id="btn-failed-retake" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <span class="lang-en">Try Scanning Again</span>
+            <span class="lang-hi lang-hindi">दोबारा फोटो खींचें</span>
+            <span class="lang-pa lang-punjabi">ਦੁਬਾਰਾ ਫੋਟੋ ਖਿੱਚੋ</span>
+          </button>
+        </article>
+
+      </section>
+
+    </main>
+
+    <!-- MAIN VIEW 2: MY MEDICINES & DOSE REMINDERS -->
+    <section class="app-content tab-view" id="view-medicines" style="display: none;">
+      <div class="view-header">
+        <h2 class="view-title">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2.3">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span class="lang-en">My Medicines &amp; Reminders</span>
+          <span class="lang-hi lang-hindi">मेरी दवाइयां और समय सारिणी</span>
+          <span class="lang-pa lang-punjabi">ਮੇਰੀਆਂ ਦਵਾਈਆਂ ਅਤੇ ਸਮਾਂ ਸਾਰਣੀ</span>
+        </h2>
+        <p class="view-subtitle">
+          <span class="lang-en">Confirmed medicines will speak a voice reminder at these times.</span>
+          <span class="lang-hi lang-hindi">सहेजी गई दवाइयों का समय होने पर बोलकर याद दिलाया जाएगा।</span>
+          <span class="lang-pa lang-punjabi">ਸਾਂਭੀਆਂ ਦਵਾਈਆਂ ਦਾ ਸਮਾਂ ਹੋਣ 'ਤੇ ਬੋਲ ਕੇ ਚੇਤੇ ਕਰਵਾਇਆ ਜਾਵੇਗਾ।</span>
+        </p>
+      </div>
+
+      <!-- Saved Medicines List -->
+      <div class="saved-medicines-list" id="saved-medicines-list">
+        <!-- Dynamically rendered or empty state -->
+      </div>
+    </section>
+
+    <!-- MAIN VIEW 3: SAFETY GUIDE & HELP -->
+    <section class="app-content tab-view" id="view-help" style="display: none;">
+      <div class="view-header">
+        <h2 class="view-title">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2.3">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span class="lang-en">Safety Guide for Elders</span>
+          <span class="lang-hi lang-hindi">बुजुर्गों के लिए सुरक्षा निर्देश</span>
+          <span class="lang-pa lang-punjabi">ਬਜ਼ੁਰਗਾਂ ਲਈ ਸੁਰੱਖਿਆ ਨਿਯਮ</span>
+        </h2>
+      </div>
+
+      <div class="safety-guide-card">
+        <div class="guide-item">
+          <span class="guide-icon">👨‍⚕️</span>
+          <div class="guide-content">
+            <h4>
+              <span class="lang-en">Doctor's Advice Comes First</span>
+              <span class="lang-hi lang-hindi">डॉक्टर का पर्चा सबसे ऊपर</span>
+              <span class="lang-pa lang-punjabi">ਡਾਕਟਰ ਦੀ ਪਰਚੀ ਸਭ ਤੋਂ ਉੱਪਰ</span>
+            </h4>
+            <p>
+              <span class="lang-en">Sehat Saathi is an assistant for reading small text on strips. Never change your dose or medicines without your doctor's written approval.</span>
+              <span class="lang-hi lang-hindi">सेहत साथी छोटे अक्षर पढ़ने में आपकी मदद करता है। डॉक्टर की अनुमति के बिना दवा या खुराक कभी न बदलें।</span>
+              <span class="lang-pa lang-punjabi">ਸੇਹਤ ਸਾਥੀ ਛੋਟੇ ਅੱਖਰ ਪੜ੍ਹਨ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹੈ। ਡਾਕਟਰ ਦੀ ਇਜਾਜ਼ਤ ਤੋਂ ਬਿਨਾਂ ਦਵਾਈ ਜਾਂ ਖੁਰਾਕ ਨਾ ਬਦਲੋ।</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="guide-item">
+          <span class="guide-icon">💊</span>
+          <div class="guide-content">
+            <h4>
+              <span class="lang-en">Check Color &amp; Shape</span>
+              <span class="lang-hi lang-hindi">दवा का रंग और आकार जांचें</span>
+              <span class="lang-pa lang-punjabi">ਦਵਾਈ ਦਾ ਰੰਗ ਅਤੇ ਅਕਾਰ ਦੇਖੋ</span>
+            </h4>
+            <p>
+              <span class="lang-en">If a new strip looks different from what you normally take, ask your chemist before swallowing.</span>
+              <span class="lang-hi lang-hindi">यदि नई दवा की गोली का रंग या आकार अलग लगे, तो खाने से पहले दवा विक्रेता से पूछें।</span>
+              <span class="lang-pa lang-punjabi">ਜੇਕਰ ਨਵੀਂ ਗੋਲੀ ਦਾ ਰੰਗ ਵੱਖਰਾ ਲੱਗੇ, ਤਾਂ ਲੈਣ ਤੋਂ ਪਹਿਲਾਂ ਕੈਮਿਸਟ ਨੂੰ ਪੁੱਛੋ।</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="guide-item">
+          <span class="guide-icon">🚨</span>
+          <div class="guide-content">
+            <h4>
+              <span class="lang-en">In Case of Emergency</span>
+              <span class="lang-hi lang-hindi">आपातकालीन सहायता</span>
+              <span class="lang-pa lang-punjabi">ਐਮਰਜੈਂਸੀ ਸਹਾਇਤਾ</span>
+            </h4>
+            <p>
+              <span class="lang-en">If you feel unwell or take a wrong medicine by accident, call 108 or 112 immediately.</span>
+              <span class="lang-hi lang-hindi">यदि तबीयत खराब लगे या गलती से गलत दवा खा लें, तो तुरंत 108 या 112 पर कॉल करें।</span>
+              <span class="lang-pa lang-punjabi">ਜੇਕਰ ਤਬੀਅਤ ਖ਼ਰਾਬ ਹੋਵੇ ਜਾਂ ਗਲਤ ਦਵਾਈ ਖਾਧੀ ਜਾਵੇ, ਤਾਂ ਤੁਰੰਤ 108 ਜਾਂ 112 'ਤੇ ਕਾਲ ਕਰੋ।</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FULL-SCREEN IN-APP DOSE ALARM MODAL -->
+    <div class="alarm-modal-backdrop" id="alarm-modal" style="display: none;" role="alertdialog" aria-modal="true" aria-labelledby="alarm-modal-title">
+      <div class="alarm-modal-card">
+        <div class="alarm-icon-pulse" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+
+        <span class="alarm-badge">
+          <span class="lang-en">Dose Reminder</span>
+          <span class="lang-hi lang-hindi">दवा का समय</span>
+          <span class="lang-pa lang-punjabi">ਦਵਾਈ ਦਾ ਸਮਾਂ</span>
+        </span>
+
+        <h2 id="alarm-modal-title" class="alarm-title">
+          <span class="lang-en">Time to Take Your Medicine!</span>
+          <span class="lang-hi lang-hindi">दवा लेने का समय हो गया है!</span>
+          <span class="lang-pa lang-punjabi">ਦਵਾਈ ਲੈਣ ਦਾ ਸਮਾਂ ਹੋ ਗਿਆ ਹੈ!</span>
+        </h2>
+
+        <div class="alarm-medicine-info">
+          <h3 class="alarm-med-name" id="alarm-med-name">Paracetamol</h3>
+          <span class="alarm-med-strength" id="alarm-med-strength">500mg</span>
+          <p class="alarm-med-instruction" id="alarm-med-instruction">1 Tablet with lukewarm water after food</p>
+        </div>
+
+        <div class="alarm-actions">
+          <button class="alarm-btn alarm-btn--took" id="btn-alarm-took" type="button">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>
+              <strong class="lang-en">✓ I Took It</strong>
+              <strong class="lang-hi lang-hindi">✓ मैंने दवा ले ली</strong>
+              <strong class="lang-pa lang-punjabi">✓ ਮੈਂ ਦਵਾਈ ਲੈ ਲਈ</strong>
+            </span>
+          </button>
+
+          <button class="alarm-btn alarm-btn--snooze" id="btn-alarm-snooze" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>
+              <strong class="lang-en">⏰ Remind me in 10 mins</strong>
+              <strong class="lang-hi lang-hindi">⏰ 10 मिनट बाद याद दिलाएं</strong>
+              <strong class="lang-pa lang-punjabi">⏰ 10 ਮਿੰਟ ਬਾਅਦ ਚੇਤੇ ਕਰਵਾਓ</strong>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom App Navigation Bar (Accessible 56px+ Touch Targets) -->
+    <nav class="app-bottom-bar" aria-label="Main App Navigation">
+      <button type="button" class="bottom-nav-item is-active" id="nav-btn-scanner" aria-current="page">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <span>
+          <span class="lang-en">Scanner</span>
+          <span class="lang-hi lang-hindi">स्कैनर</span>
+          <span class="lang-pa lang-punjabi">ਸਕੈਨਰ</span>
+        </span>
+      </button>
+
+      <button type="button" class="bottom-nav-item" id="nav-btn-medicines">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>
+          <span class="lang-en">My Medicines</span>
+          <span class="lang-hi lang-hindi">मेरी दवाइयां</span>
+          <span class="lang-pa lang-punjabi">ਮੇਰੀਆਂ ਦਵਾਈਆਂ</span>
+        </span>
+        <span class="med-count-pill" id="med-count-pill" style="display: none;">0</span>
+      </button>
+
+      <button type="button" class="bottom-nav-item" id="nav-btn-help">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>
+          <span class="lang-en">Help &amp; Safety</span>
+          <span class="lang-hi lang-hindi">मदद व सुरक्षा</span>
+          <span class="lang-pa lang-punjabi">ਮਦਦ ਅਤੇ ਸੁਰੱਖਿਆ</span>
+        </span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- Modular Application Controller -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
