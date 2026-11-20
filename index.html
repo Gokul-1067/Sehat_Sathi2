@@ -324,6 +324,23 @@
 
         <!-- SCREEN A: CONFIDENT RESULT (>= 0.85) -->
         <article class="result-card result-card--confident" id="card-confident" style="display: none;">
+          <!-- Source Identification Banner (Demo vs Actual Scan) -->
+          <div class="scan-source-banner scan-source-banner--demo" id="confident-source-banner">
+            <span class="source-banner-icon" id="confident-source-icon" aria-hidden="true">🧪</span>
+            <div class="source-banner-info">
+              <strong class="source-banner-title" id="confident-source-title">
+                <span class="lang-en">Demo / Sample Strip</span>
+                <span class="lang-hi lang-hindi">डेमो / नमूना पत्ता</span>
+                <span class="lang-pa lang-punjabi">ਡੈਮੋ / ਨਮੂਨਾ ਪੱਤਾ</span>
+              </strong>
+              <span class="source-banner-sub" id="confident-source-sub">
+                <span class="lang-en">Demonstration data for judge &amp; test review • Not an actual scan</span>
+                <span class="lang-hi lang-hindi">परीक्षण और जांच के लिए तैयार किया गया नमूना • यह असली स्कैन नहीं है</span>
+                <span class="lang-pa lang-punjabi">ਜਾਂਚ ਅਤੇ ਪਰਖ ਲਈ ਤਿਆਰ ਕੀਤਾ ਗਿਆ ਨਮੂਨਾ • ਇਹ ਅਸਲ ਸਕੈਨ ਨਹੀਂ ਹੈ</span>
+              </span>
+            </div>
+          </div>
+
           <div class="result-header">
             <div class="confidence-badge confidence-badge--high" aria-label="High certainty result">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -455,6 +472,23 @@
 
         <!-- SCREEN B: UNSURE RESULT (0.50 - 0.85) -->
         <article class="result-card result-card--unsure" id="card-unsure" style="display: none;">
+          <!-- Source Identification Banner -->
+          <div class="scan-source-banner scan-source-banner--demo" id="unsure-source-banner">
+            <span class="source-banner-icon" id="unsure-source-icon" aria-hidden="true">🧪</span>
+            <div class="source-banner-info">
+              <strong class="source-banner-title" id="unsure-source-title">
+                <span class="lang-en">Demo / Sample Strip</span>
+                <span class="lang-hi lang-hindi">डेमो / नमूना पत्ता</span>
+                <span class="lang-pa lang-punjabi">ਡੈਮੋ / ਨਮੂਨਾ ਪੱਤਾ</span>
+              </strong>
+              <span class="source-banner-sub" id="unsure-source-sub">
+                <span class="lang-en">Demonstration data for judge &amp; test review • Not an actual scan</span>
+                <span class="lang-hi lang-hindi">परीक्षण और जांच के लिए तैयार किया गया नमूना • यह असली स्कैन नहीं है</span>
+                <span class="lang-pa lang-punjabi">ਜਾਂਚ ਅਤੇ ਪਰਖ ਲਈ ਤਿਆਰ ਕੀਤਾ ਗਿਆ ਨਮੂਨਾ • ਇਹ ਅਸਲ ਸਕੈਨ ਨਹੀਂ ਹੈ</span>
+              </span>
+            </div>
+          </div>
+
           <div class="result-header">
             <div class="confidence-badge confidence-badge--medium" aria-label="Uncertain result">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -505,6 +539,23 @@
 
         <!-- SCREEN C: FAILED RESULT (< 0.50) -->
         <article class="result-card result-card--failed" id="card-failed" style="display: none;">
+          <!-- Source Identification Banner -->
+          <div class="scan-source-banner scan-source-banner--demo" id="failed-source-banner">
+            <span class="source-banner-icon" id="failed-source-icon" aria-hidden="true">🧪</span>
+            <div class="source-banner-info">
+              <strong class="source-banner-title" id="failed-source-title">
+                <span class="lang-en">Demo / Sample Strip</span>
+                <span class="lang-hi lang-hindi">डेमो / नमूना पत्ता</span>
+                <span class="lang-pa lang-punjabi">ਡੈਮੋ / ਨਮੂਨਾ ਪੱਤਾ</span>
+              </strong>
+              <span class="source-banner-sub" id="failed-source-sub">
+                <span class="lang-en">Demonstration data for judge &amp; test review • Not an actual scan</span>
+                <span class="lang-hi lang-hindi">परीक्षण और जांच के लिए तैयार किया गया नमूना • यह असली स्कैन नहीं है</span>
+                <span class="lang-pa lang-punjabi">ਜਾਂਚ ਅਤੇ ਪਰਖ ਲਈ ਤਿਆਰ ਕੀਤਾ ਗਿਆ ਨਮੂਨਾ • ਇਹ ਅਸਲ ਸਕੈਨ ਨਹੀਂ ਹੈ</span>
+              </span>
+            </div>
+          </div>
+
           <div class="result-header">
             <div class="confidence-badge confidence-badge--low" aria-label="Scan failed">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -594,6 +645,42 @@
           <span class="lang-hi lang-hindi">सहेजी गई दवाइयों का समय होने पर बोलकर याद दिलाया जाएगा।</span>
           <span class="lang-pa lang-punjabi">ਸਾਂਭੀਆਂ ਦਵਾਈਆਂ ਦਾ ਸਮਾਂ ਹੋਣ 'ਤੇ ਬੋਲ ਕੇ ਚੇਤੇ ਕਰਵਾਇਆ ਜਾਵੇਗਾ।</span>
         </p>
+      </div>
+
+      <!-- Medicines Separation & Filter Bar -->
+      <div class="medicines-filter-bar" id="medicines-filter-bar">
+        <div class="filter-pills-group" role="tablist" aria-label="Filter Medicines">
+          <button type="button" class="filter-pill is-active" data-filter="all" id="filter-pill-all">
+            <span class="lang-en">All</span>
+            <span class="lang-hi lang-hindi">सभी</span>
+            <span class="lang-pa lang-punjabi">ਸਾਰੇ</span>
+            <span class="filter-count-badge" id="count-all">0</span>
+          </button>
+          <button type="button" class="filter-pill" data-filter="actual" id="filter-pill-actual">
+            <span class="pill-icon" aria-hidden="true">📷</span>
+            <span class="lang-en">Actual Scans</span>
+            <span class="lang-hi lang-hindi">असली स्कैन</span>
+            <span class="lang-pa lang-punjabi">ਅਸਲ ਸਕੈਨ</span>
+            <span class="filter-count-badge" id="count-actual">0</span>
+          </button>
+          <button type="button" class="filter-pill" data-filter="demo" id="filter-pill-demo">
+            <span class="pill-icon" aria-hidden="true">🧪</span>
+            <span class="lang-en">Demo Samples</span>
+            <span class="lang-hi lang-hindi">डेमो नमूने</span>
+            <span class="lang-pa lang-punjabi">ਡੈਮੋ ਨਮੂਨੇ</span>
+            <span class="filter-count-badge" id="count-demo">0</span>
+          </button>
+        </div>
+
+        <button type="button" class="clear-demo-btn" id="btn-clear-demo" title="Remove all demo medicines" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span class="lang-en">Clear Demo</span>
+          <span class="lang-hi lang-hindi">डेमो हटाएं</span>
+          <span class="lang-pa lang-punjabi">ਡੈਮੋ ਹਟਾਓ</span>
+        </button>
       </div>
 
       <!-- Saved Medicines List -->
