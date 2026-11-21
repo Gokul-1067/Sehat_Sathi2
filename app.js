@@ -30,7 +30,6 @@ class SehatSaathiApp {
     this.activeScanResult = null;
     this.activeScenario = 'confident_paracetamol';
     this.savedMedicines = [];
-    this.medicinesFilter = 'all'; // 'all' | 'actual' | 'demo'
     this.alarmCheckInterval = null;
 
     // Cache DOM Elements
@@ -59,22 +58,10 @@ class SehatSaathiApp {
       blisterStripSvg: document.getElementById('blister-strip-svg'),
       a11yAnnouncer: document.getElementById('a11y-announcer'),
       
-      // Result Cards & Separation Banners
+      // Result Cards
       cardConfident: document.getElementById('card-confident'),
       cardUnsure: document.getElementById('card-unsure'),
       cardFailed: document.getElementById('card-failed'),
-      confidentSourceBanner: document.getElementById('confident-source-banner'),
-      confidentSourceTitle: document.getElementById('confident-source-title'),
-      confidentSourceSub: document.getElementById('confident-source-sub'),
-      confidentSourceIcon: document.getElementById('confident-source-icon'),
-      unsureSourceBanner: document.getElementById('unsure-source-banner'),
-      unsureSourceTitle: document.getElementById('unsure-source-title'),
-      unsureSourceSub: document.getElementById('unsure-source-sub'),
-      unsureSourceIcon: document.getElementById('unsure-source-icon'),
-      failedSourceBanner: document.getElementById('failed-source-banner'),
-      failedSourceTitle: document.getElementById('failed-source-title'),
-      failedSourceSub: document.getElementById('failed-source-sub'),
-      failedSourceIcon: document.getElementById('failed-source-icon'),
       confidentMedName: document.getElementById('confident-med-name'),
       confidentMedStrength: document.getElementById('confident-med-strength'),
       confidentMedPurpose: document.getElementById('confident-med-purpose'),
@@ -91,7 +78,7 @@ class SehatSaathiApp {
       btnUnsureRetake: document.getElementById('btn-unsure-retake'),
       btnFailedRetake: document.getElementById('btn-failed-retake'),
       
-      // Navigation, Filter Bar & Medicines
+      // Navigation & Tabs
       navBtnScanner: document.getElementById('nav-btn-scanner'),
       navBtnMedicines: document.getElementById('nav-btn-medicines'),
       navBtnHelp: document.getElementById('nav-btn-help'),
@@ -100,13 +87,6 @@ class SehatSaathiApp {
       viewHelp: document.getElementById('view-help'),
       savedMedicinesList: document.getElementById('saved-medicines-list'),
       medCountPill: document.getElementById('med-count-pill'),
-      filterPillAll: document.getElementById('filter-pill-all'),
-      filterPillActual: document.getElementById('filter-pill-actual'),
-      filterPillDemo: document.getElementById('filter-pill-demo'),
-      countAll: document.getElementById('count-all'),
-      countActual: document.getElementById('count-actual'),
-      countDemo: document.getElementById('count-demo'),
-      btnClearDemo: document.getElementById('btn-clear-demo'),
       
       // In-App Alarm Modal
       alarmModal: document.getElementById('alarm-modal'),
@@ -332,24 +312,15 @@ class SehatSaathiApp {
       try { navigator.vibrate([40, 60, 40]); } catch (e) {}
     }
 
-    // 4. Capture Frame & Call API (Passing source details to separate demo vs actual scans)
-    const isGalleryUpload = Boolean(this.dom.uploadPreviewImg && this.dom.uploadPreviewImg.style.display !== 'none' && this.dom.uploadPreviewImg.src);
-    const isLiveCamera = (this.cameraMode === 'real' && !isGalleryUpload);
-    const scanSource = isGalleryUpload ? 'gallery_upload' : (isLiveCamera ? 'live_camera' : 'demo_strip');
-    const isDemo = (this.cameraMode === 'demo');
-
+    // 4. Capture Frame & Call Mock API
     const imageBlob = await this.captureFrameBlob();
-    const result = await scanMedicine(imageBlob, {
-      scenarioOverride: this.activeScenario,
-      scanSource: scanSource,
-      isDemo: isDemo
-    });
+    const result = await scanMedicine(imageBlob, { scenarioOverride: this.activeScenario });
 
     this.dom.cameraCanvas.classList.remove('camera-scanning');
     this.dom.scanBtn.disabled = false;
     this.activeScanResult = result;
 
-    // 5. Route to appropriate confidence screen with distinct source banner
+    // 5. Route to appropriate confidence screen
     this.displayScanResult(result);
   }
 
@@ -359,9 +330,6 @@ class SehatSaathiApp {
     this.dom.cardUnsure.style.display = 'none';
     this.dom.cardFailed.style.display = 'none';
 
-    // Update demo vs actual scan visual banners
-    this.updateSourceBanners(result);
-
     if (result.status === 'confident') {
       this.renderConfidentScreen(result);
     } else if (result.status === 'unsure') {
@@ -369,52 +337,6 @@ class SehatSaathiApp {
     } else {
       this.renderFailedScreen(result);
     }
-
-    // Scroll results into comfortable view
-    setTimeout(() => {
-      document.getElementById('results-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  }
-
-  updateSourceBanners(result) {
-    const isDemo = result.isDemo !== false;
-    const bannerItems = [
-      {
-        banner: this.dom.confidentSourceBanner,
-        title: this.dom.confidentSourceTitle,
-        sub: this.dom.confidentSourceSub,
-        icon: this.dom.confidentSourceIcon
-      },
-      {
-        banner: this.dom.unsureSourceBanner,
-        title: this.dom.unsureSourceTitle,
-        sub: this.dom.unsureSourceSub,
-        icon: this.dom.unsureSourceIcon
-      },
-      {
-        banner: this.dom.failedSourceBanner,
-        title: this.dom.failedSourceTitle,
-        sub: this.dom.failedSourceSub,
-        icon: this.dom.failedSourceIcon
-      }
-    ];
-
-    bannerItems.forEach(({ banner, title, sub, icon }) => {
-      if (!banner) return;
-      banner.className = `scan-source-banner ${isDemo ? 'scan-source-banner--demo' : 'scan-source-banner--actual'}`;
-      if (icon) icon.textContent = isDemo ? '🧪' : '📷';
-      if (title) {
-        title.innerHTML = isDemo
-          ? `<span class="lang-en">${I18N.en.demoResultBadge}</span><span class="lang-hi lang-hindi">${I18N.hi.demoResultBadge}</span><span class="lang-pa lang-punjabi">${I18N.pa.demoResultBadge}</span>`
-          : `<span class="lang-en">${I18N.en.actualResultBadge}</span><span class="lang-hi lang-hindi">${I18N.hi.actualResultBadge}</span><span class="lang-pa lang-punjabi">${I18N.pa.actualResultBadge}</span>`;
-      }
-      if (sub) {
-        sub.innerHTML = isDemo
-          ? `<span class="lang-en">${I18N.en.demoResultSubtext}</span><span class="lang-hi lang-hindi">${I18N.hi.demoResultSubtext}</span><span class="lang-pa lang-punjabi">${I18N.pa.demoResultSubtext}</span>`
-          : `<span class="lang-en">${I18N.en.actualResultSubtext}</span><span class="lang-hi lang-hindi">${I18N.hi.actualResultSubtext}</span><span class="lang-pa lang-punjabi">${I18N.pa.actualResultSubtext}</span>`;
-      }
-    });
-  }
 
     // Scroll results into comfortable view
     setTimeout(() => {
@@ -614,8 +536,6 @@ class SehatSaathiApp {
     if (!this.activeScanResult || this.activeScanResult.status !== 'confident') return;
 
     const med = this.activeScanResult.medicine;
-    const isDemo = this.activeScanResult.isDemo !== false;
-    const scanSource = this.activeScanResult.scanSource || (isDemo ? 'demo_scenario' : 'live_camera');
     
     // Check if already in list
     const existingIndex = this.savedMedicines.findIndex(m => m.id === med.id);
@@ -625,9 +545,7 @@ class SehatSaathiApp {
       strength: med.strength,
       purpose: med.purpose,
       schedule: JSON.parse(JSON.stringify(med.schedule)), // deep copy
-      addedAt: new Date().toISOString(),
-      isDemo: isDemo,
-      scanSource: scanSource
+      addedAt: new Date().toISOString()
     };
 
     if (existingIndex >= 0) {
@@ -652,64 +570,20 @@ class SehatSaathiApp {
     const container = this.dom.savedMedicinesList;
     if (!container) return;
 
-    // Calculate counts for separation
-    const totalCount = this.savedMedicines.length;
-    const actualCount = this.savedMedicines.filter(m => !m.isDemo).length;
-    const demoCount = this.savedMedicines.filter(m => m.isDemo).length;
-
-    if (this.dom.countAll) this.dom.countAll.textContent = totalCount;
-    if (this.dom.countActual) this.dom.countActual.textContent = actualCount;
-    if (this.dom.countDemo) this.dom.countDemo.textContent = demoCount;
-
-    if (this.dom.btnClearDemo) {
-      this.dom.btnClearDemo.style.display = demoCount > 0 ? 'inline-flex' : 'none';
-    }
-
     container.innerHTML = '';
 
-    // Apply active filter: 'all' | 'actual' | 'demo'
-    const filtered = this.savedMedicines.filter(m => {
-      if (this.medicinesFilter === 'actual') return !m.isDemo;
-      if (this.medicinesFilter === 'demo') return Boolean(m.isDemo);
-      return true;
-    });
-
-    if (filtered.length === 0) {
-      let emptyMsg = I18N[this.currentLang].noSavedMedicines || "No saved medicines yet.";
-      if (this.medicinesFilter === 'actual') {
-        emptyMsg = this.currentLang === 'hi'
-          ? "अभी तक कोई असली दवा स्कैन करके नहीं जोड़ी गई है। कैमरा से दवा का पत्ता स्कैन करें।"
-          : this.currentLang === 'pa'
-          ? "ਅਜੇ ਤੱਕ ਕੋਈ ਅਸਲ ਦਵਾਈ ਸਕੈਨ ਕਰਕੇ ਨਹੀਂ ਜੋੜੀ ਗਈ। ਕੈਮਰੇ ਨਾਲ ਪੱਤਾ ਸਕੈਨ ਕਰੋ।"
-          : "No actual scanned medicines yet. Use the camera to scan a real medicine strip.";
-      } else if (this.medicinesFilter === 'demo') {
-        emptyMsg = this.currentLang === 'hi'
-          ? "सूची में कोई डेमो नमूना दवा नहीं है।"
-          : this.currentLang === 'pa'
-          ? "ਸੂਚੀ ਵਿੱਚ ਕੋਈ ਡੈਮੋ ਨਮੂਨਾ ਦਵਾਈ ਨਹੀਂ ਹੈ।"
-          : "No demo sample medicines in list.";
-      }
-
+    if (this.savedMedicines.length === 0) {
       container.innerHTML = `
         <div class="empty-saved-state">
-          <p>${emptyMsg}</p>
+          <p>${I18N[this.currentLang].noSavedMedicines}</p>
         </div>
       `;
       return;
     }
 
-    filtered.forEach((med) => {
-      // Find original index in this.savedMedicines for deletions/edits
-      const medIndex = this.savedMedicines.indexOf(med);
-      const isDemo = Boolean(med.isDemo);
-      const tagClass = isDemo ? 'med-source-tag--demo' : 'med-source-tag--actual';
-      const tagIcon = isDemo ? '🧪' : '📷';
-      const tagText = isDemo
-        ? (I18N[this.currentLang].medTagDemo || 'Demo Sample')
-        : (I18N[this.currentLang].medTagActual || 'Actual Prescription');
-
+    this.savedMedicines.forEach((med, medIndex) => {
       const card = document.createElement('div');
-      card.className = `saved-med-card ${isDemo ? 'saved-med-card--demo' : 'saved-med-card--actual'}`;
+      card.className = 'saved-med-card';
 
       let scheduleHtml = '';
       med.schedule.forEach((sch, schIndex) => {
@@ -727,13 +601,8 @@ class SehatSaathiApp {
 
       card.innerHTML = `
         <div class="saved-med-header">
-          <div class="saved-med-info">
-            <div class="saved-med-title-row">
-              <h3 class="saved-med-title">${med.name} <span class="med-strength">${med.strength}</span></h3>
-              <span class="med-source-tag ${tagClass}">
-                <span aria-hidden="true">${tagIcon}</span> ${tagText}
-              </span>
-            </div>
+          <div>
+            <h3 class="saved-med-title">${med.name} <span class="med-strength">${med.strength}</span></h3>
             <p class="timing-food">${med.purpose[this.currentLang] || med.purpose.en}</p>
           </div>
           <button class="delete-med-btn" data-delete-index="${medIndex}">
@@ -1030,45 +899,6 @@ class SehatSaathiApp {
     }
     if (this.dom.btnAlarmSnooze) {
       this.dom.btnAlarmSnooze.addEventListener('click', () => this.snoozeAlarm());
-    }
-
-    // Medicines Filter Pills (All / Actual Scans / Demo Samples)
-    const filterPills = [
-      { pill: this.dom.filterPillAll, filter: 'all' },
-      { pill: this.dom.filterPillActual, filter: 'actual' },
-      { pill: this.dom.filterPillDemo, filter: 'demo' }
-    ];
-
-    filterPills.forEach(({ pill, filter }) => {
-      if (pill) {
-        pill.addEventListener('click', () => {
-          this.medicinesFilter = filter;
-          filterPills.forEach(p => {
-            if (p.pill) p.pill.classList.toggle('is-active', p.filter === filter);
-          });
-          this.renderSavedMedicines();
-        });
-      }
-    });
-
-    // Clear Demo Medicines Button
-    if (this.dom.btnClearDemo) {
-      this.dom.btnClearDemo.addEventListener('click', () => {
-        const demoCount = this.savedMedicines.filter(m => m.isDemo).length;
-        if (demoCount === 0) return;
-
-        const confirmMsg = this.currentLang === 'hi'
-          ? "क्या आप सभी डेमो नमूना दवाइयां हटाना चाहते हैं? असली दवाइयां सुरक्षित रहेंगी।"
-          : this.currentLang === 'pa'
-          ? "ਕੀ ਤੁਸੀਂ ਸਾਰੀਆਂ ਡੈਮੋ ਨਮੂਨਾ ਦਵਾਈਆਂ ਹਟਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ? ਅਸਲ ਦਵਾਈਆਂ ਸੁਰੱਖਿਅਤ ਰਹਿਣਗੀਆਂ।"
-          : `Remove ${demoCount} demo sample medicine(s)? Actual scan records will remain safe.`;
-
-        if (confirm(confirmMsg)) {
-          this.savedMedicines = this.savedMedicines.filter(m => !m.isDemo);
-          this.saveMedicinesList();
-          this.announceA11y("Demo sample medicines cleared.");
-        }
-      });
     }
   }
 

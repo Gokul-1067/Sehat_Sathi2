@@ -92,18 +92,6 @@ export const I18N = {
     buttonSnooze: "⏰ Remind in 10 mins",
     deleteMedicine: "Remove",
     
-    // Separation: Demo vs Actual
-    demoResultBadge: "Demo / Sample Strip",
-    actualResultBadge: "Live Scan Result",
-    demoResultSubtext: "Demonstration data for judge & test review • Not an actual scan",
-    actualResultSubtext: "Recognized from camera / photo upload",
-    medTagDemo: "Demo Sample",
-    medTagActual: "Actual Prescription",
-    filterAll: "All",
-    filterActual: "Actual Scans",
-    filterDemo: "Demo Samples",
-    clearDemoMedicines: "Clear Demo Data",
-    
     // Bottom Navigation
     navScanner: "Scanner",
     navMyMedicines: "My Medicines",
@@ -197,18 +185,6 @@ export const I18N = {
     buttonSnooze: "⏰ 10 मिनट बाद याद दिलाएं",
     deleteMedicine: "हटाएं",
     
-    // Separation: Demo vs Actual
-    demoResultBadge: "डेमो / नमूना पत्ता",
-    actualResultBadge: "सत्यापित लाइव स्कैन",
-    demoResultSubtext: "परीक्षण और जांच के लिए तैयार किया गया नमूना • यह असली स्कैन नहीं है",
-    actualResultSubtext: "कैमरा / गैलरी फोटो से पहचानी गई दवा",
-    medTagDemo: "डेमो नमूना",
-    medTagActual: "असली पर्चा",
-    filterAll: "सभी",
-    filterActual: "असली स्कैन",
-    filterDemo: "डेमो नमूने",
-    clearDemoMedicines: "डेमो डाटा हटाएं",
-    
     // Bottom Navigation
     navScanner: "स्कैनर",
     navMyMedicines: "मेरी दवाइयां",
@@ -301,18 +277,6 @@ export const I18N = {
     buttonTookIt: "✓ ਮੈਂ ਦਵਾਈ ਲੈ ਲਈ",
     buttonSnooze: "⏰ 10 ਮਿੰਟ ਬਾਅਦ ਚੇਤੇ ਕਰਵਾਓ",
     deleteMedicine: "ਹਟਾਓ",
-    
-    // Separation: Demo vs Actual
-    demoResultBadge: "ਡੈਮੋ / ਨਮੂਨਾ ਪੱਤਾ",
-    actualResultBadge: "ਅਸਲ ਲਾਈਵ ਸਕੈਨ",
-    demoResultSubtext: "ਜਾਂਚ ਅਤੇ ਪਰਖ ਲਈ ਤਿਆਰ ਕੀਤਾ ਗਿਆ ਨਮੂਨਾ • ਇਹ ਅਸਲ ਸਕੈਨ ਨਹੀਂ ਹੈ",
-    actualResultSubtext: "ਕੈਮਰਾ / ਗੈਲਰੀ ਫੋਟੋ ਤੋਂ ਪਛਾਣੀ ਗਈ ਦਵਾਈ",
-    medTagDemo: "ਡੈਮੋ ਨਮੂਨਾ",
-    medTagActual: "ਅਸਲ ਨੁਸਖ਼ਾ",
-    filterAll: "ਸਾਰੇ",
-    filterActual: "ਅਸਲ ਸਕੈਨ",
-    filterDemo: "ਡੈਮੋ ਨਮੂਨੇ",
-    clearDemoMedicines: "ਡੈਮੋ ਡਾਟਾ ਹਟਾਓ",
     
     // Bottom Navigation
     navScanner: "ਸਕੈਨਰ",

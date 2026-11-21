@@ -30,19 +30,9 @@
  * @property {'confident'|'unsure'|'failed'} status
  * @property {MedicineData|null} medicine
  * @property {number} confidence - 0.00 to 1.00
- * @property {boolean} isDemo - true for simulated/demo scenario results, false for live backend scans
- * @property {string} scanSource - 'demo_scenario'|'demo_strip'|'live_camera'|'gallery_upload'|'backend_api'
  * @property {CandidateOption[]} [candidateOptions] - Top 2-3 choices when status is 'unsure'
  * @property {string[]} [reasons] - Reasons when failed or unsure (e.g. ['shiny_reflection', 'torn_edge'])
  */
-
-// Backend API Configuration
-export const BACKEND_CONFIG = {
-  // Toggle to true once POST /api/v1/scan is deployed and accessible
-  useLiveBackend: false,
-  endpoint: "/api/v1/scan",
-  timeoutMs: 15000
-};
 
 // Confidence thresholds defined by clinical & UX safety requirements
 export const CONFIDENCE_THRESHOLDS = {
@@ -127,31 +117,18 @@ export const MEDICINE_DATASET = {
 };
 
 /**
- * Primary Scan Function (Supports both Live Backend Endpoint & Demo Mock Scenarios)
+ * Primary Mock Scan Function
  * @param {Blob|null} imageBlob - Image captured from camera or chosen from gallery
  * @param {Object} [options]
  * @param {string} [options.scenarioOverride] - Force specific demo scenario
- * @param {boolean} [options.isDemo] - Force demo mode flag
- * @param {string} [options.scanSource] - Source identifier ('demo_strip'|'live_camera'|'gallery_upload')
  * @returns {Promise<ScanResult>}
  */
 export async function scanMedicine(imageBlob, options = {}) {
-  // If Live Backend is enabled, dispatch direct multipart POST to /api/v1/scan
-  if (BACKEND_CONFIG.useLiveBackend || options.useLiveBackend) {
-    try {
-      return await callBackendScanApi(imageBlob);
-    } catch (err) {
-      console.warn("Backend API call failed, falling back to demo mode with demo flag:", err);
-      // Fall through to mock demo generator but keep isDemo: true
-    }
-  }
-
   // Simulate network & on-device OCR latency (750ms - 1300ms)
   const delay = 900 + Math.floor(Math.random() * 400);
   await new Promise(resolve => setTimeout(resolve, delay));
 
   const scenario = options.scenarioOverride || getScenarioFromUrl() || "confident_paracetamol";
-  const source = options.scanSource || "demo_scenario";
 
   switch (scenario) {
     case "confident_paracetamol":
@@ -159,8 +136,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "confident",
         medicine: MEDICINE_DATASET.paracetamol_500,
         confidence: 0.96,
-        isDemo: true,
-        scanSource: source,
         reasons: ["clear_brand_text", "matching_batch_pattern"]
       };
 
@@ -169,8 +144,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "confident",
         medicine: MEDICINE_DATASET.metformin_500,
         confidence: 0.92,
-        isDemo: true,
-        scanSource: source,
         reasons: ["clear_brand_text", "verified_salt_name"]
       };
 
@@ -179,8 +152,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "confident",
         medicine: MEDICINE_DATASET.amlodipine_5,
         confidence: 0.94,
-        isDemo: true,
-        scanSource: source,
         reasons: ["crisp_dosage_text", "verified_brand"]
       };
 
@@ -189,8 +160,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "confident",
         medicine: MEDICINE_DATASET.pantoprazole_40,
         confidence: 0.91,
-        isDemo: true,
-        scanSource: source,
         reasons: ["clear_capsule_imprint", "valid_strength_match"]
       };
 
@@ -199,8 +168,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "confident",
         medicine: MEDICINE_DATASET.azithromycin_500,
         confidence: 0.89,
-        isDemo: true,
-        scanSource: source,
         reasons: ["full_strip_visible", "verified_strength"]
       };
 
@@ -211,8 +178,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "unsure",
         medicine: null, // Strictly null: never assume medicine when unsure
         confidence: 0.68,
-        isDemo: true,
-        scanSource: source,
         candidateOptions: [
           {
             id: "paracetamol_500",
@@ -243,8 +208,6 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "failed",
         medicine: null,
         confidence: 0.28,
-        isDemo: true,
-        scanSource: source,
         candidateOptions: [],
         reasons: ["text_severely_torn", "high_motion_blur", "insufficient_ambient_light"]
       };
@@ -255,52 +218,8 @@ export async function scanMedicine(imageBlob, options = {}) {
         status: "confident",
         medicine: MEDICINE_DATASET.paracetamol_500,
         confidence: 0.95,
-        isDemo: true,
-        scanSource: source,
         reasons: ["default_demo_scan"]
       };
-  }
-}
-
-/**
- * Live Backend Microservice Connector (POST /api/v1/scan)
- * Consumes multipart/form-data with binary image
- * @param {Blob} imageBlob
- * @returns {Promise<ScanResult>}
- */
-export async function callBackendScanApi(imageBlob) {
-  const formData = new FormData();
-  formData.append("image", imageBlob, "medicine_strip.jpg");
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), BACKEND_CONFIG.timeoutMs);
-
-  try {
-    const res = await fetch(BACKEND_CONFIG.endpoint, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      throw new Error(`Backend responded with HTTP ${res.status}: ${res.statusText}`);
-    }
-
-    const json = await res.json();
-    return {
-      status: json.status || "confident",
-      medicine: json.medicine || null,
-      confidence: typeof json.confidence === "number" ? json.confidence : 0.9,
-      candidateOptions: json.candidateOptions || [],
-      reasons: json.reasons || [],
-      isDemo: false, // Explicitly false for live backend results
-      scanSource: "backend_api"
-    };
-  } catch (err) {
-    clearTimeout(timeoutId);
-    throw err;
   }
 }
 
